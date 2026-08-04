@@ -1,0 +1,12 @@
+Flask
+flask-cors
+gunicorn
+google-genai
+gTTS
+click
+deep_translator
+imageio-ffmpeg
+edge-tts
+pydub
+gradio
+python-dotenv

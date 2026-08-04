@@ -1,0 +1,1 @@
+file 'D:/App Project 2026/MeanNey - AI Video Voice Dubber/meanney_backend/outputs/temp_srt_audio/seg_0.mp3'

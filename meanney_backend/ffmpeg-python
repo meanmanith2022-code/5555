@@ -1,0 +1,24 @@
+import ffmpeg
+
+def merge_audio_to_video(video_path, audio_path, output_path):
+    # កូដនេះនឹងយក Audio ថ្មីដាក់ជំនួស ឬលាយជាមួយ Audio ដើម
+    input_video = ffmpeg.input(video_path)
+    input_audio = ffmpeg.input(audio_path)
+    
+    # -c:v copy ៖ គឺ copy វីដេអូដើមដោយមិនបាច់ Render ឡើងវិញ (លឿនបំផុត)
+    # -c:a aac ៖ បំប្លែងសំឡេងទៅជាទម្រង់ AAC
+    # -map 0:v:0 ៖ យកវីដេអូពីឯកសារទី១
+    # -map 1:a:0 ៖ យកសំឡេងពីឯកសារទី២
+    
+    stream = ffmpeg.output(
+        input_video, 
+        input_audio, 
+        output_path, 
+        vcodec='copy', 
+        acodec='aac', 
+        strict='experimental'
+    )
+    stream.run()
+
+# របៀបប្រើ៖
+# merge_audio_to_video("input.mp4", "combined_audio.wav", "final_output.mp4")
