@@ -4,8 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String defaultBaseUrl =
-      'http://127.0.0.1:5000';
+  static const String defaultBaseUrl = 'https://meanney-ai-video-voice-dubber.onrender.com';
   static const String _desktopHost = '127.0.0.1';
   static const String _androidEmulatorHost = '10.0.2.2';
   static const String _manualHost =
