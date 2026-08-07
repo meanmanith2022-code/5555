@@ -4,3 +4,4 @@ openai-whisper
 pysrt
 google-generativeai
 flask-cors
+edge-tts
