@@ -6,3 +6,4 @@ google-generativeai
 flask-cors
 edge-tts
 gradio
+googletrans==4.0.0-rc1
