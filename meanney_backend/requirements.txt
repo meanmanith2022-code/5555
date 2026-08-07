@@ -5,3 +5,4 @@ pysrt
 google-generativeai
 flask-cors
 edge-tts
+gradio
