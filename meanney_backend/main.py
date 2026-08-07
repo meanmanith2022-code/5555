@@ -7,6 +7,7 @@ import sys
 import requests
 import subprocess
 from pathlib import Path
+from urllib.parse import urlparse
 import pysrt
 import edge_tts
 from flask import Flask, request, jsonify, send_from_directory
@@ -165,6 +166,69 @@ def save_srt_content(srt_content: str, target_path):
     return str(target)
 
 
+def is_url(path: str) -> bool:
+    try:
+        parsed = urlparse(path)
+        return parsed.scheme in ('http', 'https')
+    except Exception:
+        return False
+
+
+def resolve_existing_path(candidate: Optional[str]) -> Optional[str]:
+    if not candidate:
+        return None
+
+    if is_url(candidate):
+        return None
+
+    candidate_path = Path(candidate)
+    lookup_paths = []
+    if candidate_path.is_absolute():
+        lookup_paths.append(candidate_path)
+    else:
+        lookup_paths.extend([
+            BASE_DIR / candidate_path,
+            BASE_DIR.parent / candidate_path,
+            candidate_path,
+            Path(candidate_path.as_posix().lstrip('/')),
+        ])
+
+    for path in lookup_paths:
+        if path.exists():
+            return str(path)
+    return None
+
+
+def download_remote_file(url: str, target_path: Path) -> str:
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    with requests.get(url, stream=True, timeout=30) as response:
+        response.raise_for_status()
+        with open(target_path, 'wb') as output_file:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    output_file.write(chunk)
+    return str(target_path)
+
+
+def extract_audio_from_video(video_path: str, output_path: str, bitrate: str = '192k') -> None:
+    OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        'ffmpeg',
+        '-y',
+        '-i',
+        str(video_path),
+        '-vn',
+        '-acodec',
+        'libmp3lame',
+        '-b:a',
+        bitrate,
+        str(output_path),
+    ]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr or 'FFmpeg failed to extract audio.')
+
+
 def normalize_voice_option(voice_option):
     if not isinstance(voice_option, str):
         return 'auto'
@@ -300,6 +364,86 @@ def generate_dub():
         "video_url": f"http://127.0.0.1:5000/outputs/{Path(output_video_path).name}",
         "message": "Dubbing បានជោគជ័យ!"
     })
+
+
+@app.route('/api/extract-mp3', methods=['POST'])
+def extract_mp3():
+    video_file = request.files.get('video')
+    bitrate = request.form.get('bitrate', '192k')
+    video_path = None
+
+    if video_file:
+        saved_video = save_file_to_temp(video_file, TEMP_VIDEO_DIR)
+        if saved_video is None:
+            return jsonify({"status": "error", "message": "Failed to save uploaded video."}), 500
+        video_path = str(saved_video)
+    elif request.form.get('video_path'):
+        resolved = resolve_existing_path(request.form.get('video_path'))
+        if not resolved:
+            return jsonify({"status": "error", "message": "Video path not found."}), 400
+        video_path = resolved
+    elif request.form.get('video_url'):
+        video_url = request.form.get('video_url')
+        try:
+            temp_video_path = TEMP_VIDEO_DIR / f"temp_video_{int(time.time())}{Path(urlparse(video_url).path).suffix or '.mp4'}"
+            video_path = download_remote_file(video_url, temp_video_path)
+        except Exception as exc:
+            return jsonify({"status": "error", "message": f"Failed to download video: {exc}"}), 400
+    else:
+        return jsonify({"status": "error", "message": "Missing video file or path."}), 400
+
+    output_filename = f"extracted_audio_{int(time.time())}.mp3"
+    output_path = OUTPUTS_DIR / output_filename
+
+    try:
+        extract_audio_from_video(video_path, str(output_path), bitrate)
+    except Exception as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 500
+
+    return jsonify({
+        "status": "completed",
+        "audio_url": f"http://127.0.0.1:5000/outputs/{output_filename}",
+    })
+
+
+@app.route('/api/run-video-tool', methods=['POST'])
+def run_video_tool():
+    data = request.get_json(silent=True) or {}
+    action = data.get('action')
+    video_url = data.get('video_url')
+    options = data.get('options') or {}
+
+    if not action:
+        return jsonify({"status": "error", "message": "Missing action."}), 400
+    if not video_url:
+        return jsonify({"status": "error", "message": "Missing video_url."}), 400
+
+    if action == 'extract-mp3':
+        bitrate = options.get('bitrate', '192k')
+        video_path = None
+
+        try:
+            if is_url(video_url):
+                temp_video_path = TEMP_VIDEO_DIR / f"temp_video_{int(time.time())}{Path(urlparse(video_url).path).suffix or '.mp4'}"
+                video_path = download_remote_file(video_url, temp_video_path)
+            else:
+                resolved = resolve_existing_path(video_url)
+                if not resolved:
+                    return jsonify({"status": "error", "message": "Video path not found."}), 400
+                video_path = resolved
+
+            output_filename = f"extracted_audio_{int(time.time())}.mp3"
+            output_path = OUTPUTS_DIR / output_filename
+            extract_audio_from_video(video_path, str(output_path), bitrate)
+
+            return jsonify({
+                "status": "completed",
+                "audio_url": f"http://127.0.0.1:5000/outputs/{output_filename}",
+            })
+        except Exception as exc:
+            return jsonify({"status": "error", "message": str(exc)}), 500
+
+    return jsonify({"status": "error", "message": f"Unsupported action: {action}"}), 400
 
 
 @app.route('/api/process-video', methods=['POST', 'OPTIONS'])

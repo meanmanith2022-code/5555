@@ -127,7 +127,32 @@ class _MyAppState extends State<MyApp> {
                         await _playWelcomeSound();
                       }
                     : null,
-                child: const LightDashboardHome(),
+                child: Stack(
+                  children: [
+                    const LightDashboardHome(),
+                    if (kIsWeb && widget.playStartupSound && !_hasRequestedAudio)
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          color: Colors.black87,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 16,
+                          ),
+                          child: const Text(
+                            'Tap anywhere to play startup sound',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             );
           },

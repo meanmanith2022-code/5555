@@ -85,6 +85,39 @@ class MainSrtTests(unittest.TestCase):
         self.assertEqual(data['status'], 'completed')
         self.assertIn('video_url', data)
 
+    def test_extract_mp3_route_returns_audio_url(self):
+        client = main.app.test_client()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            sample_video_path = Path(temp_dir) / 'sample.mp4'
+            sample_video_path.write_bytes(b'fake-mp4-content')
+
+            original_extract_audio = main.extract_audio_from_video
+
+            def fake_extract_audio_from_video(video_path, output_path, bitrate='192k'):
+                out_path = Path(output_path)
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                out_path.write_bytes(b'fake-mp3-content')
+                return str(out_path)
+
+            try:
+                main.extract_audio_from_video = fake_extract_audio_from_video
+                with open(sample_video_path, 'rb') as video_file:
+                    response = client.post(
+                        '/api/extract-mp3',
+                        data={
+                            'bitrate': '192k',
+                            'video': (video_file, 'sample.mp4'),
+                        },
+                        content_type='multipart/form-data',
+                    )
+            finally:
+                main.extract_audio_from_video = original_extract_audio
+
+            self.assertEqual(response.status_code, 200)
+            data = response.get_json()
+            self.assertEqual(data['status'], 'completed')
+            self.assertIn('audio_url', data)
+
 
 if __name__ == '__main__':
     unittest.main()
