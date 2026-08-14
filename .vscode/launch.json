@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "MeanNey AI (Web Port 8080)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--web-port",
+        "8080",  // ✅ ប្តូរត្រង់នេះទៅជា 8080 ដើម្បីកុំឱ្យជាន់ជាមួយ FastAPI
+        "--web-browser-flag",
+        "--disable-web-security"
+      ]
+    },
+    {
+      "name": "MeanNey - AI Video Voice Dubber (release mode)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release"
+    }
+  ]
+}

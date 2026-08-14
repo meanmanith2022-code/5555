@@ -1,0 +1,59 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+class DubbingProgressDialogState extends State<DubbingProgressDialog> {
+  double progress = 0.1; // 10%
+  int currentStep = 1;
+  int totalSteps = 43;
+  String speaker = "Auto";
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    startProgressPolling();
+  }
+
+  void startProgressPolling() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      try {
+        final response = await http.get(
+          Uri.parse('https://meanney-ai-video-voice-dubber.onrender.com/api/dubbing-status'),
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          setState(() {
+            currentStep = (data['current_step'] as num?)?.toInt() ?? 1;
+            totalSteps = (data['total_steps'] as num?)?.toInt() ?? 43;
+
+            // គណនា % ពី currentStep / totalSteps ដោយផ្ទាល់
+            if (totalSteps > 0) {
+              progress = currentStep / totalSteps; // នឹងទទួលបានពី 0.0 ដល់ 1.0
+            } else {
+              progress = (data['percent'] as num?)?.toDouble() ?? 0.1;
+            }
+
+            speaker = data['speaker']?.toString() ?? "Auto";
+          });
+
+          // ប្រសិនបើដើរដល់ 100% (1.0) ត្រូវបិទ Timer
+          if (progress >= 1.0 || data['status'] == 'completed') {
+            _timer?.cancel();
+          }
+        }
+      } catch (e) {
+        print("Error fetching status: $e");
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+  
+  // ... ផ្នែក UI Widget ( LinearProgressIndicator(value: progress) ) ...
+}
