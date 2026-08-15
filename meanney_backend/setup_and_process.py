@@ -2,7 +2,7 @@ import os
 import torch
 import subprocess
 import imageio_ffmpeg
-
+import whisper
 
 def _ensure_ffmpeg_on_path():
     """Prepend known FFmpeg locations to PATH so PyDub can discover ffmpeg/ffprobe."""
@@ -59,11 +59,10 @@ def separate_vocals(audio_path, output_dir="output_demucs"):
     """
     print(f"\n🎵 កំពុងផ្តាច់សំឡេង (Demucs) លើ file: {audio_path}...")
     
-    # ប្រើ htdemucs model ដែលលឿន និងច្បាស់
     cmd = [
         "demucs",
         "--two-stems", "vocals",  # ផ្តាច់ជា ២ ភាគ៖ vocals និង non-vocals (no_vocals)
-        "-d", DEVICE,             # cuda ឬ cpu
+        "-d", DEVICE,            # cuda ឬ cpu
         "-o", output_dir,
         audio_path
     ]
@@ -127,19 +126,12 @@ def convert_or_trim_video(input_file, output_file, start_time=None, duration=Non
 def process_dubbing_full(video_input, srt_subtitles, audio_segments, output_video, original_vol=0.1, dub_vol=1.0):
     """
     1. Build combined Khmer TTS audio by overlaying segments at their start times
-    2. Merge combined audio with original video and render subtitles using Kantumruy Pro
-    Parameters:
-      - video_input: path to source video
-      - srt_subtitles: path to SRT file
-      - audio_segments: list of dicts [{'file': path, 'start': seconds}, ...]
-      - output_video: path to write final MP4
+    2. Merge combined audio with original video and render subtitles
     """
 
-    # Create outputs dir if needed
     outputs_dir = os.path.dirname(os.path.abspath(output_video)) or '.'
     os.makedirs(outputs_dir, exist_ok=True)
 
-    # Estimate a safe duration: try to get video duration via ffprobe, fallback to 3 minutes
     total_duration_ms = 180000
     try:
         probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", video_input], capture_output=True, text=True)
@@ -149,7 +141,6 @@ def process_dubbing_full(video_input, srt_subtitles, audio_segments, output_vide
     except Exception:
         pass
 
-    # Create silent base track and overlay segments
     combined_audio = AudioSegment.silent(duration=total_duration_ms)
     for item in audio_segments:
         seg_file = item.get('file')
@@ -161,12 +152,10 @@ def process_dubbing_full(video_input, srt_subtitles, audio_segments, output_vide
     combined_audio_path = os.path.join(outputs_dir, 'full_khmer_audio.mp3')
     combined_audio.export(combined_audio_path, format='mp3')
 
-    # Prepare subtitle and font paths (Windows-safe)
     srt_clean_path = os.path.abspath(srt_subtitles).replace('\\', '/').replace(':', '\\:')
     base_dir = os.path.dirname(os.path.abspath(__file__))
     fonts_dir = os.path.abspath(os.path.join(base_dir, 'fonts')).replace('\\', '/')
 
-    # Use a standard SRT burn-in with explicit force_style so FFmpeg actually renders the Khmer subtitles.
     vf_options = (
         "drawbox=y=ih-160:color=black@0.85:width=iw:height=160:t=fill,"
         f"subtitles='{srt_clean_path}':fontsdir='{fonts_dir}':"
@@ -196,20 +185,15 @@ def process_dubbing_full(video_input, srt_subtitles, audio_segments, output_vide
         raise
 
 # ==========================================
-# TEST RUN (សាកល្បងដំណើការ)
+# TEST RUN (សាកល្បងដំណើរការ)
 # ==========================================
 if __name__ == "__main__":
-    # ឧទាហរណ៍ file ចូល
     sample_media = "input_video.mp4"
     
     if os.path.exists(sample_media):
-        # 1. កាត់យកតែសំឡេងតាម FFmpeg
         convert_or_trim_video(sample_media, "extracted_audio.wav")
-        
-        # 2. ផ្តាច់ Vocal ចេញពី Background Music
         separate_vocals("extracted_audio.wav")
         
-        # 3. បម្លែងសំឡេង Vocal ទៅជា Text
         vocal_file = "output_demucs/htdemucs/extracted_audio/vocals.wav"
         if os.path.exists(vocal_file):
             transcribe_audio(vocal_file)
