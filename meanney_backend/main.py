@@ -18,6 +18,7 @@ from deep_translator import GoogleTranslator as Translator
 from copy import deepcopy
 import time 
 from dotenv import load_dotenv
+import sys
 
 load_dotenv()
 
