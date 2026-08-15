@@ -254,7 +254,6 @@ def generate_dub():
     else:
         data = request.form or {}
 
-    # ទាញយកតម្លៃ forced_gender ឬ voice_option ពីសំណើរបស់ UI
     forced_gender = data.get('forced_gender', data.get('voice_gender', data.get('selected_voice', 'auto')))
     voice_option = normalize_voice_option(forced_gender)
     target_voice = data.get('target_voice', forced_gender)
@@ -457,7 +456,6 @@ def process_video():
             if data.get('source_lang') or data.get('target_voice') or data.get('video_path'):
                 return auto_process_module.process_video()
 
-
         def resolve_existing_path(candidate: Optional[str]) -> Optional[str]:
             if not candidate:
                 return None
@@ -655,7 +653,7 @@ def auto_process_video(video_file, source_lang, voice_option) -> Tuple[Optional[
         translated = translator_obj.translate(extracted_text, dest='km')
         translated_subtitle = translated.text
     except Exception as e:
-        translated_subtitle = f"មានកំហុសឆ្គងក្នុងការដំណើរការ: {str(e)}"
+        translated_subtitle = f"មានកំហុសឆ្គងក្នុងការដំណើរการ: {str(e)}"
 
     return video_path, translated_subtitle
 
@@ -676,4 +674,5 @@ demo = gr.Interface(
 
 
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
