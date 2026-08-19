@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   // កំណត់ Localtunnel URL ពី Google Colab
-  static const String defaultBaseUrl = 'https://grumpy-seals-taste.loca.lt';
+  static const String defaultBaseUrl = 'https://spicy-bobcats-float.loca.lt';
   static const String _desktopHost = '127.0.0.1';
   static const String _androidEmulatorHost = '10.0.2.2';
   static const String _manualHost = ''; 
