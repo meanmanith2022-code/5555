@@ -4,11 +4,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String defaultBaseUrl = 'https://meanney-ai-video-voice-dubber.onrender.com/';
+  // កំណត់ Localtunnel URL ពី Google Colab
+  static const String defaultBaseUrl = 'https://grumpy-seals-taste.loca.lt';
   static const String _desktopHost = '127.0.0.1';
   static const String _androidEmulatorHost = '10.0.2.2';
-  static const String _manualHost =
-      ''; // Set this to your desktop IP for real Android devices.
+  static const String _manualHost = ''; 
   static String _configuredBaseUrl = '';
 
   static void setBaseUrl(String? url) {
@@ -29,20 +29,6 @@ class ApiService {
     if (_manualHost.isNotEmpty) {
       return 'http://$_manualHost:5000';
     }
-    if (kIsWeb) {
-      // When running on the web, auto-detect: if the browser is on localhost,
-      // point to the local backend; otherwise use the production Render URL.
-      try {
-        final hostname = Uri.base.host;
-        if (hostname == 'localhost' || hostname == '127.0.0.1') {
-          return 'http://localhost:5000';
-        }
-      } catch (_) {}
-      return defaultBaseUrl;
-    }
-    if (Platform.isAndroid) {
-      return 'http://$_androidEmulatorHost:5000';
-    }
     return defaultBaseUrl;
   }
 
@@ -62,15 +48,15 @@ class ApiService {
   }
 
   /// Fetch the list of available Kiri TTS voices from the backend.
-  ///
-  /// If [serverUrl] is provided, it will be used instead of the configured base URL.
-  /// Example: fetchVoicesFromServer('http://127.0.0.1:5000')
   static Future<List<dynamic>> fetchVoicesFromServer([String? serverUrl]) async {
     try {
       final base = (serverUrl ?? baseUrl).trim();
       final normalizedBase = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
       final response = await http.get(
         Uri.parse('$normalizedBase/api/get-voices'),
+        headers: {
+          'bypass-tunnel-reminder': 'true',
+        },
       );
 
       if (response.statusCode == 200) {
@@ -114,6 +100,7 @@ class ApiService {
         'POST',
         Uri.parse('$baseUrl/api/generate-dub'),
       );
+      request.headers['bypass-tunnel-reminder'] = 'true';
 
       request.fields['voice_gender'] = voiceGender;
       request.fields['original_vol'] = originalVol.toString();
@@ -203,6 +190,7 @@ class ApiService {
         Uri.parse('$baseUrl/api/run-video-tool'),
       );
       request.headers['Content-Type'] = 'application/json';
+      request.headers['bypass-tunnel-reminder'] = 'true';
       request.body = jsonEncode({
         'action': action,
         'video_url': videoUrl,
@@ -259,6 +247,7 @@ class ApiService {
         'POST',
         Uri.parse('$baseUrl/api/extract-mp3'),
       );
+      request.headers['bypass-tunnel-reminder'] = 'true';
       request.fields['bitrate'] = bitrate;
 
       if (videoBytes != null) {
@@ -304,6 +293,7 @@ class ApiService {
         'POST',
         Uri.parse('$baseUrl/api/auto-process'),
       );
+      request.headers['bypass-tunnel-reminder'] = 'true';
 
       if (sourceLang != null) request.fields['source_lang'] = sourceLang;
       if (voiceOption != null) request.fields['voice_option'] = voiceOption;
@@ -348,6 +338,8 @@ class ApiService {
         'POST',
         Uri.parse('$baseUrl/api/convert-document'),
       );
+      request.headers['bypass-tunnel-reminder'] = 'true';
+
       if (assistantModel != null) {
         request.fields['assistant_model'] = assistantModel;
       }
@@ -401,6 +393,8 @@ class ApiService {
         'POST',
         Uri.parse('$baseUrl/api/translate-srt'),
       );
+      request.headers['bypass-tunnel-reminder'] = 'true';
+
       if (srtBytes != null) {
         request.files.add(
           http.MultipartFile.fromBytes(
@@ -436,8 +430,10 @@ class ApiService {
         'POST',
         Uri.parse('$baseUrl/api/edit-video'),
       );
+      request.headers['bypass-tunnel-reminder'] = 'true';
       request.fields['video_url'] = videoUrl;
       request.fields['options'] = jsonEncode(options);
+
       if (stickerBytes != null) {
         request.files.add(
           http.MultipartFile.fromBytes(
@@ -474,6 +470,8 @@ class ApiService {
         'POST',
         Uri.parse('$baseUrl/api/watermark-video'),
       );
+      request.headers['bypass-tunnel-reminder'] = 'true';
+
       if (videoUrl != null && videoUrl.isNotEmpty) {
         request.fields['video_url'] = videoUrl;
       }
