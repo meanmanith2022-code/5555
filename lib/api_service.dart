@@ -468,7 +468,7 @@ class ApiService {
     try {
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('$baseUrl/api/watermark-video'),
+        Uri.parse('$baseUrl/api/watermark_video'),
       );
       request.headers['bypass-tunnel-reminder'] = 'true';
 
